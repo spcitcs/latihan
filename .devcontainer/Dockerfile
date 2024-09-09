@@ -1,23 +1,32 @@
-# Use an Ubuntu base image
-FROM mcr.microsoft.com/devcontainers/base:ubuntu
+# Use a minimal Ubuntu base image (slim)
+FROM ubuntu:22.04 as base
 
-# Install Dart
-RUN sudo apt-get update && \
-    sudo apt-get install -y apt-transport-https wget software-properties-common && \
-    wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - && \
-    sudo sh -c 'wget -qO- https://storage.googleapis.com/download.dartlang.org/linux/debian/dart_stable.list > /etc/apt/sources.list.d/dart_stable.list' && \
-    sudo apt-get update && \
-    sudo apt-get install -y dart
+# Set environment variables to avoid user interaction during package installations
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Python
-RUN sudo apt-get install -y python3 python3-pip
+# Install Dart, Python, and essential utilities
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    wget \
+    python3 \
+    python3-pip \
+    software-properties-common && \
+    # Install Dart
+    wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
+    sh -c 'wget -qO- https://storage.googleapis.com/download.dartlang.org/linux/debian/dart_stable.list > /etc/apt/sources.list.d/dart_stable.list' && \
+    apt-get update && apt-get install -y --no-install-recommends dart && \
+    # Install Jupyter
+    pip3 install --no-cache-dir notebook jupyterlab && \
+    # Clean up unnecessary files and reduce image size
+    apt-get remove --purge -y software-properties-common apt-transport-https && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install Jupyter
-RUN pip3 install notebook jupyterlab
+# Set default python and dart commands to be executable from any shell session
+RUN ln -s /usr/bin/python3 /usr/bin/python && ln -s /usr/bin/dart /usr/local/bin/dart
 
-# Install additional dependencies (if needed for live share, etc.)
-RUN sudo apt-get install -y git curl
-
-# Clean up
-RUN sudo apt-get clean && \
-    sudo rm -rf /var/lib/apt/lists/*
+# Verify installation
+RUN python --version && pip --version && dart --version
