@@ -6,17 +6,15 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Step 1: Update and install necessary utilities
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    apt-transport-https \
     ca-certificates \
     curl \
-    wget \
+    gnupg \
     python3 \
-    python3-pip \
-    software-properties-common
+    python3-pip
 
-# Step 2: Install Dart
-RUN wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    sh -c 'wget -qO- https://storage.googleapis.com/download.dartlang.org/linux/debian/dart_stable.list > /etc/apt/sources.list.d/dart_stable.list' && \
+# Step 2: Install Dart without apt-key (modern approach)
+RUN curl -fsSL https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/dart-archive-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/dart-archive-keyring.gpg] https://storage.googleapis.com/download.dartlang.org/linux/debian stable main" | tee /etc/apt/sources.list.d/dart_stable.list > /dev/null && \
     apt-get update && \
     apt-get install -y --no-install-recommends dart
 
@@ -24,9 +22,7 @@ RUN wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key ad
 RUN pip3 install --no-cache-dir notebook jupyterlab
 
 # Step 4: Clean up unnecessary packages to reduce image size
-RUN apt-get remove --purge -y software-properties-common apt-transport-https && \
-    apt-get autoremove -y && \
-    apt-get clean && \
+RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Step 5: Set default python and dart commands to be executable from any shell session
